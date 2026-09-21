@@ -1,0 +1,469 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>paper-scan UI候補</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #111; }
+    .shot {
+      width: 390px;
+      height: 844px;
+      overflow: hidden;
+      position: relative;
+      font-family: "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    body.single { background: transparent; }
+    body.single .shot { display: none !important; }
+    body.single #ink-home.on,
+    body.single #sheet-home.on,
+    body.single #sheet-crop.on,
+    body.single #lens-home.on,
+    body.single #lens-crop.on { display: flex !important; }
+    body.single #ink-crop.on { display: block !important; }
+    button { font: inherit; border: 0; background: none; color: inherit; }
+    .status {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+      padding: 14px 22px 0;
+    }
+
+    /* ---------- Ink ---------- */
+    #ink-home, #ink-crop { background: #10110f; color: #f6f4ee; }
+    #ink-home { display: flex; flex-direction: column; padding-bottom: 28px; }
+    #ink-home h1 { font-size: 40px; line-height: 1.15; letter-spacing: -0.04em; margin: 28px 24px 8px; font-weight: 650; }
+    #ink-home .lead { margin: 0 24px; color: #b9b6ad; font-size: 16px; }
+    #ink-home .stage {
+      flex: 1;
+      margin: 28px 20px;
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at 70% 20%, rgba(214,255,74,.18), transparent 30%),
+        linear-gradient(180deg, #1c1d18, #141512);
+      display: grid;
+      place-items: center;
+      position: relative;
+    }
+    .mini-paper {
+      width: 168px;
+      height: 220px;
+      background: #f7f4ee;
+      border-radius: 4px;
+      transform: rotate(-6deg);
+      box-shadow: 0 24px 50px rgba(0,0,0,.35);
+      padding: 18px 16px;
+    }
+    .mini-paper b { display: block; color: #222; font-size: 13px; margin-bottom: 12px; }
+    .mini-paper i { display: block; height: 6px; background: #e4e0d6; border-radius: 99px; margin: 7px 0; }
+    .ink-actions { display: grid; gap: 10px; padding: 0 20px; }
+    .ink-actions .go, .ink-actions .alt {
+      height: 56px;
+      border-radius: 18px;
+      font-size: 17px;
+      font-weight: 650;
+    }
+    .ink-actions .go { background: #d6ff4a; color: #16180c; }
+    .ink-actions .alt { background: #23241e; color: #f6f4ee; }
+
+    #ink-crop .photo {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 30% 80%, rgba(0,0,0,.25), transparent 40%),
+        linear-gradient(160deg, #6a6158 0%, #3d3832 42%, #2a2622 100%);
+    }
+    #ink-crop .top, #ink-crop .bottom {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    #ink-crop .top { top: 52px; }
+    #ink-crop .bottom { bottom: 28px; }
+    .chip, .lime {
+      height: 48px;
+      padding: 0 16px;
+      border-radius: 999px;
+      font-weight: 650;
+      font-size: 15px;
+    }
+    .chip { background: rgba(16,17,15,.62); color: white; backdrop-filter: blur(10px); }
+    .lime { background: #d6ff4a; color: #16180c; flex: 1; }
+    .doc {
+      position: absolute;
+      left: 54px;
+      right: 48px;
+      top: 168px;
+      height: 430px;
+      background: #fbf8f2;
+      transform: rotate(3.5deg);
+      box-shadow: 0 18px 40px rgba(0,0,0,.28);
+    }
+    .doc .t { color: #1d1d1d; font-weight: 700; padding: 22px 18px 0; font-size: 15px; }
+    .doc .ln { height: 7px; margin: 10px 18px; background: #ece7dc; border-radius: 99px; }
+    .doc .ln.s { width: 62%; }
+    .bracket {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border: 3px solid #d6ff4a;
+      z-index: 2;
+    }
+    .bracket.tl { top: 150px; left: 42px; border-right: 0; border-bottom: 0; }
+    .bracket.tr { top: 132px; right: 28px; border-left: 0; border-bottom: 0; }
+    .bracket.bl { top: 575px; left: 36px; border-right: 0; border-top: 0; }
+    .bracket.br { top: 600px; right: 36px; border-left: 0; border-top: 0; }
+    .handle {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #d6ff4a;
+      border: 3px solid #10110f;
+      z-index: 3;
+    }
+    .handle.tl { top: 142px; left: 34px; }
+    .handle.tr { top: 122px; right: 18px; }
+    .handle.bl { top: 582px; left: 26px; }
+    .handle.br { top: 608px; right: 26px; }
+    #ink-crop .hint {
+      position: absolute;
+      top: 112px;
+      left: 0;
+      right: 0;
+      text-align: center;
+      color: white;
+      font-size: 13px;
+      text-shadow: 0 1px 8px rgba(0,0,0,.5);
+      z-index: 2;
+    }
+
+    /* ---------- Sheet ---------- */
+    #sheet-home, #sheet-crop { background: #f3efe8; color: #1c1917; }
+    #sheet-home { display: flex; flex-direction: column; }
+    .sheet-head, .crop-head { padding: 8px 22px 0; display: flex; justify-content: space-between; align-items: end; }
+    .sheet-head h1, .crop-head h1 { margin: 0; font-family: Palatino, "Iowan Old Style", serif; font-size: 34px; font-weight: 600; letter-spacing: -0.03em; }
+    .count { font-size: 13px; color: #74695d; }
+    .pages { padding: 18px 16px 110px; display: grid; gap: 12px; }
+    .page {
+      display: grid;
+      grid-template-columns: 72px 1fr auto;
+      gap: 12px;
+      align-items: center;
+      background: white;
+      border-radius: 18px;
+      padding: 10px;
+    }
+    .thumb {
+      height: 92px;
+      border-radius: 10px;
+      background: #fff;
+      border: 1px solid #ece4d8;
+      padding: 8px;
+    }
+    .thumb i { display: block; height: 4px; background: #eee7dc; margin: 5px 0; border-radius: 99px; }
+    .page strong { display: block; font-size: 16px; }
+    .page span { color: #74695d; font-size: 13px; }
+    .tag { font-size: 12px; background: #f3efe8; border-radius: 999px; padding: 6px 8px; }
+    .dock {
+      position: absolute;
+      left: 16px;
+      right: 16px;
+      bottom: 22px;
+      height: 72px;
+      background: #1c1917;
+      color: white;
+      border-radius: 24px;
+      display: grid;
+      grid-template-columns: 1fr 1.4fr 1fr;
+      align-items: center;
+      text-align: center;
+      font-size: 13px;
+      font-weight: 650;
+    }
+    .dock .main { background: #e7ff6a; color: #1c1917; height: 48px; margin: 0 6px; border-radius: 16px; font-size: 15px; }
+
+    #sheet-crop { display: flex; flex-direction: column; }
+    .steps { display: flex; gap: 6px; padding: 16px 22px 0; }
+    .steps span { font-size: 12px; padding: 6px 10px; border-radius: 999px; background: #e7e0d6; color: #74695d; }
+    .steps .now { background: #1c1917; color: white; }
+    #sheet-crop .canvas {
+      margin: 16px;
+      flex: 1;
+      background: #e7e1d7;
+      border-radius: 24px;
+      position: relative;
+    }
+    #sheet-crop .paper {
+      position: absolute;
+      inset: 46px 28px 54px;
+      background: white;
+      border-radius: 2px;
+      box-shadow: 0 10px 24px rgba(70,50,20,.12);
+    }
+    #sheet-crop .paper b { display: block; padding: 16px 14px 0; font-size: 14px; }
+    #sheet-crop .paper i { display: block; height: 6px; margin: 8px 14px; background: #f0ebe3; border-radius: 99px; }
+    .dot {
+      position: absolute;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: white;
+      border: 2px solid #1c1917;
+      box-shadow: 0 4px 10px rgba(0,0,0,.15);
+    }
+    .dot.a { left: 18px; top: 34px; }
+    .dot.b { right: 16px; top: 28px; }
+    .dot.c { right: 22px; bottom: 40px; }
+    .dot.d { left: 16px; bottom: 46px; }
+    .sheet-cta {
+      margin: 0 16px 22px;
+      height: 56px;
+      border-radius: 18px;
+      background: #c4512b;
+      color: white;
+      font-size: 17px;
+      font-weight: 700;
+    }
+
+    /* ---------- Lens ---------- */
+    #lens-home, #lens-crop { background: #f7f7f5; color: #141414; }
+    #lens-home { padding: 0 20px 24px; display: flex; flex-direction: column; }
+    #lens-home h1 { font-size: 44px; line-height: 1.05; letter-spacing: -0.045em; margin: 18px 0 8px; }
+    #lens-home .lead { margin: 0 0 22px; color: #5e5e5a; font-size: 16px; }
+    .choice {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: white;
+      border-radius: 22px;
+      padding: 16px;
+      margin-bottom: 10px;
+      text-align: left;
+      box-shadow: 0 1px 0 rgba(0,0,0,.04);
+    }
+    .choice .ico {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      background: #141414;
+      color: white;
+      font-size: 20px;
+      flex: none;
+    }
+    .choice.alt .ico { background: #ecece8; color: #141414; }
+    .choice b { display: block; font-size: 17px; }
+    .choice span { color: #6b6b66; font-size: 13px; }
+    .recent { margin-top: auto; }
+    .recent p { font-size: 13px; color: #6b6b66; margin: 0 0 10px; }
+    .row { display: flex; gap: 10px; }
+    .card {
+      width: 132px;
+      height: 168px;
+      background: white;
+      border-radius: 16px;
+      padding: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,.04);
+    }
+    .card i { display: block; height: 6px; background: #efeee9; border-radius: 99px; margin-top: 8px; }
+    .card em { font-style: normal; font-size: 12px; color: #6b6b66; }
+
+    #lens-crop { display: flex; flex-direction: column; }
+    .lens-top { display: flex; justify-content: space-between; align-items: center; padding: 8px 18px 0; }
+    .round {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: white;
+      font-size: 18px;
+    }
+    #lens-crop h2 { margin: 14px 20px 0; font-size: 28px; letter-spacing: -0.04em; }
+    #lens-crop .sub { margin: 4px 20px 12px; color: #6b6b66; font-size: 14px; }
+    .sheet {
+      margin: 0 20px;
+      height: 390px;
+      background: white;
+      border-radius: 18px;
+      position: relative;
+      box-shadow: 0 16px 40px rgba(0,0,0,.06);
+    }
+    .sheet b { display: block; padding: 28px 22px 0; }
+    .sheet i { display: block; height: 8px; margin: 12px 22px; background: #f2f1ec; border-radius: 99px; }
+    .knob {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 7px;
+      background: #2f6fed;
+      border: 2px solid white;
+      box-shadow: 0 0 0 4px rgba(47,111,237,.18);
+    }
+    .knob.a { left: -8px; top: -8px; }
+    .knob.b { right: -8px; top: -8px; }
+    .knob.c { right: -8px; bottom: -8px; }
+    .knob.d { left: -8px; bottom: -8px; }
+    .seg {
+      margin: 16px 20px 0;
+      background: #ecece8;
+      border-radius: 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      padding: 4px;
+      font-size: 14px;
+      font-weight: 650;
+    }
+    .seg .on { background: white; border-radius: 11px; height: 36px; }
+    .lens-go {
+      margin: 14px 20px 0;
+      height: 56px;
+      border-radius: 16px;
+      background: #141414;
+      color: white;
+      font-size: 17px;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <section class="shot" id="ink-home">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <h1>紙を、<br>そのままPDFに。</h1>
+    <p class="lead">カメラを開けば、枠合わせまで進みます。</p>
+    <div class="stage">
+      <div class="mini-paper">
+        <b>請求書</b>
+        <i></i><i></i><i class="s"></i><i></i><i></i>
+      </div>
+    </div>
+    <div class="ink-actions">
+      <button class="go">カメラを開く</button>
+      <button class="alt">持っている写真を使う</button>
+    </div>
+  </section>
+
+  <section class="shot" id="ink-crop">
+    <div class="photo"></div>
+    <div class="status" style="position:relative;z-index:2;color:white"><span>9:41</span><span>5G</span></div>
+    <p class="hint">点を紙の角までドラッグ</p>
+    <div class="doc">
+      <div class="t">お見積書</div>
+      <div class="ln"></div><div class="ln s"></div><div class="ln"></div><div class="ln"></div><div class="ln s"></div><div class="ln"></div>
+    </div>
+    <i class="bracket tl"></i><i class="bracket tr"></i><i class="bracket bl"></i><i class="bracket br"></i>
+    <i class="handle tl"></i><i class="handle tr"></i><i class="handle bl"></i><i class="handle br"></i>
+    <div class="top">
+      <button class="chip">閉じる</button>
+      <button class="chip">自動で枠</button>
+    </div>
+    <div class="bottom">
+      <button class="lime">この範囲で続ける</button>
+    </div>
+  </section>
+
+  <section class="shot" id="sheet-home">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <div class="sheet-head">
+      <h1>原稿</h1>
+      <span class="count">2ページ</span>
+    </div>
+    <div class="pages">
+      <article class="page">
+        <div class="thumb"><i></i><i></i><i></i><i></i></div>
+        <div><strong>請求書</strong><span>白黒 · たった今</span></div>
+        <span class="tag">1</span>
+      </article>
+      <article class="page">
+        <div class="thumb"><i></i><i></i><i></i></div>
+        <div><strong>メモ</strong><span>カラー · 2分前</span></div>
+        <span class="tag">2</span>
+      </article>
+    </div>
+    <nav class="dock">
+      <span>並べ替え</span>
+      <button class="main">ページを追加</button>
+      <span>PDF</span>
+    </nav>
+  </section>
+
+  <section class="shot" id="sheet-crop">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <div class="crop-head">
+      <h1>枠</h1>
+      <span class="count">角を合わせる</span>
+    </div>
+    <div class="steps">
+      <span>撮る</span>
+      <span class="now">枠</span>
+      <span>仕上げ</span>
+    </div>
+    <div class="canvas">
+      <div class="paper">
+        <b>会議メモ</b>
+        <i></i><i></i><i></i><i style="width:70%"></i><i></i>
+      </div>
+      <i class="dot a"></i><i class="dot b"></i><i class="dot c"></i><i class="dot d"></i>
+    </div>
+    <button class="sheet-cta">この枠で読み取る</button>
+  </section>
+
+  <section class="shot" id="lens-home">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <h1>書類を<br>PDFにする</h1>
+    <p class="lead">撮る、枠を直す、保存。それだけです。</p>
+    <button class="choice">
+      <span class="ico">◎</span>
+      <span><b>今すぐ撮る</b><span>うしろのカメラが開きます</span></span>
+    </button>
+    <button class="choice alt">
+      <span class="ico">▣</span>
+      <span><b>写真から選ぶ</b><span>すでに撮った紙を使います</span></span>
+    </button>
+    <div class="recent">
+      <p>さきほどのページ</p>
+      <div class="row">
+        <div class="card"><em>請求書</em><i></i><i></i><i></i></div>
+        <div class="card"><em>メモ</em><i></i><i></i></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="shot" id="lens-crop">
+    <div class="status"><span>9:41</span><span>5G</span></div>
+    <div class="lens-top">
+      <button class="round">←</button>
+      <button class="round">↻</button>
+    </div>
+    <h2>範囲を決める</h2>
+    <p class="sub">青い角を、紙の角に重ねます。</p>
+    <div class="sheet">
+      <b>納品書</b>
+      <i></i><i></i><i style="width:55%"></i><i></i><i></i><i style="width:80%"></i>
+      <i class="knob a"></i><i class="knob b"></i><i class="knob c"></i><i class="knob d"></i>
+    </div>
+    <div class="seg">
+      <button class="on">白黒</button>
+      <button>グレー</button>
+      <button>カラー</button>
+    </div>
+    <button class="lens-go">ページに加える</button>
+  </section>
+  <script>
+    const shot = new URLSearchParams(location.search).get("shot");
+    if (shot) {
+      document.body.classList.add("single");
+      document.getElementById(shot)?.classList.add("on");
+    }
+  </script>
+</body>
+</html>

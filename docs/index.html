@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>paper-scan 画面の候補</title>
+  <style>
+    :root { color: #1c1917; background: #f6f3ee; font-family: "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    header, main { width: min(1100px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 28px 0 8px; }
+    h1 { font-size: clamp(28px, 5vw, 40px); letter-spacing: -0.04em; margin: 0 0 8px; }
+    header p { margin: 0; color: #5c564e; line-height: 1.6; }
+    .grid { display: grid; gap: 28px; padding: 24px 0 48px; }
+    article { background: white; border-radius: 24px; padding: 20px; }
+    article h2 { margin: 0 0 6px; font-size: 22px; }
+    article p { margin: 0 0 16px; color: #5c564e; line-height: 1.6; }
+    .pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+    figure { margin: 0; }
+    img { width: 100%; height: auto; border-radius: 18px; background: #111; display: block; }
+    figcaption { margin-top: 8px; font-size: 13px; color: #6f675e; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>画面の候補</h1>
+    <p>スマホで親指が届く位置にボタンを置き、最初に何をすればいいか分かるようにした案です。本番のアプリにはまだ入れていません。</p>
+  </header>
+  <main class="grid">
+    <article>
+      <h2>A. インク</h2>
+      <p>暗い画面です。カメラを開くボタンを一番下に置き、枠合わせは撮った写真の上でそのまま行います。</p>
+      <div class="pair">
+        <figure>
+          <img src="images/ink-home.png" alt="インク案の最初の画面" />
+          <figcaption>最初の画面</figcaption>
+        </figure>
+        <figure>
+          <img src="images/ink-crop.png" alt="インク案の枠合わせ" />
+          <figcaption>枠合わせ</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article>
+      <h2>B. 原稿</h2>
+      <p>撮ったページをカードで並べます。下のバーで追加とPDFを分け、「撮る、枠、仕上げ」のどの段階かも見えるようにしています。</p>
+      <div class="pair">
+        <figure>
+          <img src="images/sheet-home.png" alt="原稿案のページ一覧" />
+          <figcaption>ページ一覧</figcaption>
+        </figure>
+        <figure>
+          <img src="images/sheet-crop.png" alt="原稿案の枠合わせ" />
+          <figcaption>枠合わせ</figcaption>
+        </figure>
+      </div>
+    </article>
+    <article>
+      <h2>C. レンズ</h2>
+      <p>最初は「今すぐ撮る」と「写真から選ぶ」だけです。枠の画面で、白黒・グレー・カラーをその場で選べます。</p>
+      <div class="pair">
+        <figure>
+          <img src="images/lens-home.png" alt="レンズ案の最初の画面" />
+          <figcaption>最初の画面</figcaption>
+        </figure>
+        <figure>
+          <img src="images/lens-crop.png" alt="レンズ案の枠合わせ" />
+          <figcaption>枠合わせ</figcaption>
+        </figure>
+      </div>
+    </article>
+  </main>
+</body>
+</html>

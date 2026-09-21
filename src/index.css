@@ -1,0 +1,177 @@
+:root {
+  color: #1f1a17;
+  background: #f3efe6;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  line-height: 1.4;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+button, input { font: inherit; }
+
+button {
+  border: 1px solid #d9d0c4;
+  background: #fffdf8;
+  color: inherit;
+  border-radius: 999px;
+  padding: 0.7rem 1rem;
+  cursor: pointer;
+}
+
+button:disabled { opacity: 0.45; cursor: default; }
+
+button.primary {
+  background: #0c6b58;
+  border-color: #0c6b58;
+  color: #f4fff9;
+}
+
+button.ghost { background: transparent; }
+
+button.danger { color: #9f2d2d; }
+
+button.on {
+  background: #1f1a17;
+  border-color: #1f1a17;
+  color: #f3efe6;
+}
+
+.app {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 1rem 1rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.mark {
+  margin: 0;
+  font-family: Palatino, "Iowan Old Style", "Times New Roman", serif;
+  font-size: 1.6rem;
+  letter-spacing: -0.03em;
+}
+
+.count { color: #6f655c; }
+
+.library ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.library li {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 0.8rem;
+  align-items: center;
+  background: #fffdf8;
+  border: 1px solid #e4dcd0;
+  border-radius: 16px;
+  padding: 0.6rem;
+}
+
+.library img {
+  width: 92px;
+  height: 120px;
+  object-fit: cover;
+  background: #fff;
+  border-radius: 8px;
+}
+
+.empty, .note {
+  margin: 0;
+  color: #6f655c;
+}
+
+.note.error { color: #9f2d2d; }
+
+.workspace { display: flex; flex-direction: column; gap: 0.8rem; }
+
+.frame {
+  position: relative;
+  width: 100%;
+  max-height: 68vh;
+  margin: 0 auto;
+  background: #1f1a17;
+  border-radius: 18px;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.canvas-host,
+.canvas-host canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.quad {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.quad polygon {
+  fill: rgba(12, 107, 88, 0.18);
+  stroke: #d8fff3;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}
+
+.handle {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 3px solid #fffdf8;
+  background: #0c6b58;
+  transform: translate(-50%, -50%);
+  touch-action: none;
+}
+
+.filters, .bar, .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bar { margin-top: auto; }
+
+.camera {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-height: 70vh;
+}
+
+.camera video {
+  width: 100%;
+  flex: 1;
+  min-height: 50vh;
+  object-fit: cover;
+  background: #111;
+  border-radius: 18px;
+}
+
+.shutter { min-width: 7rem; }
