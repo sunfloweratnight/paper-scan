@@ -10,7 +10,7 @@ import {
   orderCorners,
 } from './lib/detect.ts'
 import { quadIsUsable, type Corners } from './lib/geometry.ts'
-import { canvasFromBlob } from './lib/image.ts'
+import { canvasFromBlob, canvasFromSource } from './lib/image.ts'
 import { canvasToJpeg, downloadBlob, pagesToPdf } from './lib/pdf.ts'
 import { warpDocument } from './lib/warp.ts'
 
@@ -46,7 +46,7 @@ export default function App() {
   const [source, setSource] = useState<HTMLCanvasElement | null>(null)
   const [corners, setCorners] = useState<Corners | null>(null)
   const [warped, setWarped] = useState<HTMLCanvasElement | null>(null)
-  const [filter, setFilter] = useState<FilterMode>('bw')
+  const [filter, setFilter] = useState<FilterMode>('color')
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -54,11 +54,13 @@ export default function App() {
 
   const enhanced = useMemo(() => (warped ? enhance(warped, filter) : null), [warped, filter])
 
-  async function openBlob(blob: Blob) {
+  async function openSource(input: Blob | HTMLCanvasElement) {
     setError(null)
     setBusy(true)
     try {
-      const canvas = await canvasFromBlob(blob)
+      const canvas = input instanceof HTMLCanvasElement
+        ? canvasFromSource(input)
+        : await canvasFromBlob(input)
       setSource(canvas)
       setCorners(defaultCorners(canvas.width, canvas.height))
       setStage('corners')
@@ -128,7 +130,7 @@ export default function App() {
 
   function readFile(file: File | undefined) {
     if (!file) return
-    void openBlob(file)
+    void openSource(file)
   }
 
   function showPreview() {
@@ -142,7 +144,7 @@ export default function App() {
     window.setTimeout(() => {
       try {
         setWarped(warpDocument(source, corners))
-        setFilter('bw')
+        setFilter('color')
         setStage('preview')
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : '正面化に失敗しました')
@@ -304,7 +306,7 @@ export default function App() {
         <CameraCapture
           onClose={cancelToLibrary}
           onPickFile={() => fileRef.current?.click()}
-          onCapture={(blob) => void openBlob(blob)}
+          onCapture={(canvas) => void openSource(canvas)}
         />
       )}
 

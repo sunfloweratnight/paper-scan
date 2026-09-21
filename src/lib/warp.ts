@@ -29,8 +29,9 @@ void main() {
 `
 
 export function warpDocument(source: HTMLCanvasElement, corners: Corners): HTMLCanvasElement {
-  const prepared = fitSource(source, corners)
-  const size = outputSize(prepared.corners)
+  const limit = textureLimit()
+  const prepared = fitSource(source, corners, limit)
+  const size = outputSize(prepared.corners, Math.min(4500, limit))
   const destination: Corners = [
     { x: 0, y: 0 },
     { x: size.width - 1, y: 0 },
@@ -44,9 +45,12 @@ export function warpDocument(source: HTMLCanvasElement, corners: Corners): HTMLC
   const gpu = document.createElement('canvas')
   gpu.width = size.width
   gpu.height = size.height
-  if (warpWebgl(prepared.source, gpu, mapped)) {
+  if (Math.max(size.width, size.height, prepared.source.width, prepared.source.height) <= limit
+    && warpWebgl(prepared.source, gpu, mapped)) {
     const ctx = output.getContext('2d')
     if (!ctx) throw new Error('Canvas を使えません')
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(gpu, 0, 0)
   } else {
     warpCpu(prepared.source, output, mapped)
@@ -54,8 +58,19 @@ export function warpDocument(source: HTMLCanvasElement, corners: Corners): HTMLC
   return output
 }
 
-function fitSource(source: HTMLCanvasElement, corners: Corners): { source: HTMLCanvasElement; corners: Corners } {
-  const limit = 4096
+function textureLimit(): number {
+  const probe = document.createElement('canvas')
+  const gl = probe.getContext('webgl', { antialias: false })
+  if (!gl) return 4096
+  const size = gl.getParameter(gl.MAX_TEXTURE_SIZE)
+  return typeof size === 'number' && size > 0 ? Math.min(size, 8192) : 4096
+}
+
+function fitSource(
+  source: HTMLCanvasElement,
+  corners: Corners,
+  limit: number,
+): { source: HTMLCanvasElement; corners: Corners } {
   const longest = Math.max(source.width, source.height)
   if (longest <= limit) return { source, corners }
   const scale = limit / longest
@@ -64,6 +79,8 @@ function fitSource(source: HTMLCanvasElement, corners: Corners): { source: HTMLC
   fitted.height = Math.max(2, Math.round(source.height * scale))
   const ctx = fitted.getContext('2d')
   if (!ctx) return { source, corners }
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(source, 0, 0, fitted.width, fitted.height)
   return {
     source: fitted,
@@ -77,7 +94,11 @@ function fitSource(source: HTMLCanvasElement, corners: Corners): { source: HTMLC
 }
 
 function warpWebgl(source: HTMLCanvasElement, output: HTMLCanvasElement, mapped: Homography): boolean {
-  const gl = output.getContext('webgl', { preserveDrawingBuffer: true, premultipliedAlpha: false })
+  const gl = output.getContext('webgl', {
+    preserveDrawingBuffer: true,
+    premultipliedAlpha: false,
+    antialias: false,
+  })
   if (!gl) return false
   const program = createProgram(gl)
   if (!program) return false

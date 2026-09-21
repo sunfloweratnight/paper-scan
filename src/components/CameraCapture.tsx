@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 type Props = {
-  onCapture: (blob: Blob) => void
+  onCapture: (canvas: HTMLCanvasElement) => void
   onClose: () => void
   onPickFile: () => void
 }
@@ -9,6 +9,7 @@ type Props = {
 export function CameraCapture({ onCapture, onClose, onPickFile }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
 
   useEffect(() => {
     const video = videoRef.current
@@ -21,8 +22,8 @@ export function CameraCapture({ onCapture, onClose, onPickFile }: Props) {
           audio: false,
           video: {
             facingMode: { ideal: 'environment' },
-            width: { ideal: 1920 },
-            height: { ideal: 1080 },
+            width: { ideal: 4032 },
+            height: { ideal: 3024 },
           },
         })
         if (cancelled) {
@@ -32,6 +33,11 @@ export function CameraCapture({ onCapture, onClose, onPickFile }: Props) {
         if (video) {
           video.srcObject = stream
           await video.play()
+          const track = stream.getVideoTracks()[0]
+          const settings = track?.getSettings()
+          if (settings?.width && settings?.height) {
+            setInfo(`${settings.width}×${settings.height}`)
+          }
         }
       } catch {
         if (!cancelled) setError('カメラを開けませんでした。写真から選んでください。')
@@ -54,17 +60,17 @@ export function CameraCapture({ onCapture, onClose, onPickFile }: Props) {
     canvas.height = video.videoHeight
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
     ctx.drawImage(video, 0, 0)
-    canvas.toBlob((blob) => {
-      if (blob) onCapture(blob)
-    }, 'image/jpeg', 0.95)
+    onCapture(canvas)
   }
 
   return (
     <section className="camera workspace">
       <header className="sheet-head">
         <h1>撮る</h1>
-        <span className="count">紙全体が入るように</span>
+        <span className="count">{info ?? '紙全体が入るように'}</span>
       </header>
       <div className="steps" aria-label="手順">
         <span className="now">撮る</span>

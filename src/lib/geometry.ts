@@ -63,10 +63,11 @@ export function applyHomography(h: Homography, x: number, y: number): Point {
   }
 }
 
-export function outputSize(corners: Corners, maxEdge = 2400): { width: number; height: number } {
+export function outputSize(corners: Corners, maxEdge = 4500): { width: number; height: number } {
   const [tl, tr, br, bl] = corners
   const width = Math.max(distance(tl, tr), distance(bl, br))
   const height = Math.max(distance(tl, bl), distance(tr, br))
+  // Prefer native document resolution; only downscale huge outputs.
   const scale = Math.min(1, maxEdge / Math.max(width, height, 1))
   return {
     width: Math.max(2, Math.round(width * scale)),
