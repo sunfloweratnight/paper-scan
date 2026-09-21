@@ -81,7 +81,7 @@ export function quadIsUsable(corners: Corners): boolean {
     !segmentsIntersect(corners[1], corners[2], corners[3], corners[0])
 }
 
-function polygonArea(corners: Corners): number {
+export function polygonArea(corners: Corners): number {
   let sum = 0
   for (let i = 0; i < 4; i++) {
     const a = corners[i]

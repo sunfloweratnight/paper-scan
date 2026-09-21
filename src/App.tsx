@@ -2,7 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { CameraCapture } from './components/CameraCapture.tsx'
 import { CornerEditor } from './components/CornerEditor.tsx'
 import { enhance, type FilterMode } from './lib/enhance.ts'
-import { insetCorners, quadIsUsable, type Corners } from './lib/geometry.ts'
+import {
+  clampCorners,
+  defaultCorners,
+  detectionCanvas,
+  isSensibleDocument,
+  orderCorners,
+} from './lib/detect.ts'
+import { quadIsUsable, type Corners } from './lib/geometry.ts'
 import { canvasFromBlob } from './lib/image.ts'
 import { canvasToJpeg, downloadBlob, pagesToPdf } from './lib/pdf.ts'
 import { warpDocument } from './lib/warp.ts'
@@ -53,7 +60,7 @@ export default function App() {
     try {
       const canvas = await canvasFromBlob(blob)
       setSource(canvas)
-      setCorners(insetCorners(canvas.width, canvas.height))
+      setCorners(defaultCorners(canvas.width, canvas.height))
       setStage('corners')
       void detect(canvas)
     } catch (cause) {
@@ -67,9 +74,11 @@ export default function App() {
     const generation = ++detectGen.current
     setNote('書類の位置を探しています…')
     try {
+      const prepared = detectionCanvas(canvas)
       const { Quadscan } = await import('quadscan')
-      const result = await Quadscan.scan(canvas, {
+      const result = await Quadscan.scan(prepared.canvas, {
         mode: 'detect',
+        minDetectionConfidence: 0.08,
         onProgress(event) {
           if (detectGen.current !== generation) return
           if (event.phase === 'model-download') setNote('検出モデルをダウンロードしています…')
@@ -78,15 +87,41 @@ export default function App() {
       })
       if (detectGen.current !== generation) return
       if (result.success && result.corners) {
-        const found = result.corners
-        setCorners([found.topLeft, found.topRight, found.bottomRight, found.bottomLeft])
-        setNote(null)
-      } else {
-        setNote('自動検出できませんでした。四隅をドラッグしてください。')
+        const scaled = clampCorners(
+          [
+            {
+              x: result.corners.topLeft.x * prepared.scaleX,
+              y: result.corners.topLeft.y * prepared.scaleY,
+            },
+            {
+              x: result.corners.topRight.x * prepared.scaleX,
+              y: result.corners.topRight.y * prepared.scaleY,
+            },
+            {
+              x: result.corners.bottomRight.x * prepared.scaleX,
+              y: result.corners.bottomRight.y * prepared.scaleY,
+            },
+            {
+              x: result.corners.bottomLeft.x * prepared.scaleX,
+              y: result.corners.bottomLeft.y * prepared.scaleY,
+            },
+          ],
+          canvas.width,
+          canvas.height,
+        )
+        const ordered = orderCorners(scaled)
+        if (isSensibleDocument(ordered, canvas.width, canvas.height)) {
+          setCorners(ordered)
+          setNote(null)
+          return
+        }
       }
+      setCorners(defaultCorners(canvas.width, canvas.height))
+      setNote('自動では枠を決めきれませんでした。角をドラッグして合わせてください。')
     } catch {
       if (detectGen.current === generation) {
-        setNote('自動検出に失敗しました。四隅を手動で合わせてください。')
+        setCorners(defaultCorners(canvas.width, canvas.height))
+        setNote('自動検出に失敗しました。角をドラッグして合わせてください。')
       }
     }
   }
@@ -290,7 +325,7 @@ export default function App() {
               type="button"
               className="ghost"
               onClick={() => {
-                setCorners(insetCorners(source.width, source.height))
+                setCorners(defaultCorners(source.width, source.height))
                 void detect(source)
               }}
             >
@@ -375,17 +410,53 @@ function Steps({ current }: { current: 'camera' | 'corners' | 'preview' }) {
 }
 
 function PreviewCanvas({ canvas }: { canvas: HTMLCanvasElement }) {
+  const viewportRef = useRef<HTMLDivElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
+  const [box, setBox] = useState({ left: 0, top: 0, width: 0, height: 0 })
+
+  useEffect(() => {
+    const viewport = viewportRef.current
+    if (!viewport) return
+
+    function layout() {
+      if (!viewport) return
+      const rect = viewport.getBoundingClientRect()
+      const pad = 8
+      const availW = Math.max(1, rect.width - pad * 2)
+      const availH = Math.max(1, rect.height - pad * 2)
+      const scale = Math.min(availW / canvas.width, availH / canvas.height)
+      const width = Math.max(1, canvas.width * scale)
+      const height = Math.max(1, canvas.height * scale)
+      setBox({
+        left: (rect.width - width) / 2,
+        top: (rect.height - height) / 2,
+        width,
+        height,
+      })
+    }
+
+    layout()
+    const observer = new ResizeObserver(layout)
+    observer.observe(viewport)
+    return () => observer.disconnect()
+  }, [canvas])
 
   useEffect(() => {
     const host = hostRef.current
     if (!host) return
     host.replaceChildren(canvas)
+    return () => {
+      if (canvas.parentElement === host) host.removeChild(canvas)
+    }
   }, [canvas])
 
   return (
-    <div className="frame preview soft" style={{ aspectRatio: `${canvas.width} / ${canvas.height}` }}>
-      <div ref={hostRef} className="canvas-host" />
+    <div className="viewport" ref={viewportRef}>
+      <div
+        ref={hostRef}
+        className="preview-host"
+        style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
+      />
     </div>
   )
 }
