@@ -42,7 +42,11 @@ export function CornerEditor({ source, corners, onChange }: Props) {
   }
 
   return (
-    <div className="frame" ref={frameRef}>
+    <div
+      className="frame soft"
+      ref={frameRef}
+      style={{ aspectRatio: `${source.width} / ${source.height}` }}
+    >
       <div ref={hostRef} className="canvas-host" />
       <svg className="quad" viewBox={`0 0 ${source.width} ${source.height}`} aria-hidden="true">
         <polygon

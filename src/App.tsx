@@ -15,6 +15,8 @@ type Page = {
   url: string
   width: number
   height: number
+  filter: FilterMode
+  createdAt: number
 }
 
 const FILTERS: { id: FilterMode; label: string }[] = [
@@ -22,6 +24,12 @@ const FILTERS: { id: FilterMode; label: string }[] = [
   { id: 'gray', label: 'グレー' },
   { id: 'color', label: 'カラー' },
 ]
+
+const FILTER_LABEL: Record<FilterMode, string> = {
+  bw: '白黒',
+  gray: 'グレー',
+  color: 'カラー',
+}
 
 export default function App() {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -35,6 +43,7 @@ export default function App() {
   const [note, setNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [reordering, setReordering] = useState(false)
 
   const enhanced = useMemo(() => (warped ? enhance(warped, filter) : null), [warped, filter])
 
@@ -116,11 +125,20 @@ export default function App() {
       const url = URL.createObjectURL(blob)
       setPages((current) => [
         ...current,
-        { id: crypto.randomUUID(), blob, url, width: enhanced.width, height: enhanced.height },
+        {
+          id: crypto.randomUUID(),
+          blob,
+          url,
+          width: enhanced.width,
+          height: enhanced.height,
+          filter,
+          createdAt: Date.now(),
+        },
       ])
       setStage('library')
       setSource(null)
       setWarped(null)
+      setReordering(false)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'ページを保存できませんでした')
     } finally {
@@ -161,73 +179,137 @@ export default function App() {
     })
   }
 
-  return (
-    <div className="app">
-      <header>
-        <p className="mark">paper-scan</p>
-        {stage === 'library' && <span className="count">{pages.length} ページ</span>}
-      </header>
+  function cancelToLibrary() {
+    detectGen.current += 1
+    setSource(null)
+    setCorners(null)
+    setWarped(null)
+    setNote(null)
+    setError(null)
+    setStage('library')
+  }
 
-      {error && <p className="note error">{error}</p>}
+  return (
+    <div className={`app theme-sheet stage-${stage}`}>
+      {error && <p className="banner error" role="alert">{error}</p>}
+      {busy && <p className="banner busy" role="status">処理しています…</p>}
 
       {stage === 'library' && (
         <main className="library">
+          <header className="sheet-head">
+            <h1>原稿</h1>
+            <span className="count">{pages.length} ページ</span>
+          </header>
+
           {pages.length === 0 ? (
-            <p className="empty">紙を撮るか、画像を選ぶとここにページが並びます。</p>
+            <div className="empty-card">
+              <p>まだページはありません。</p>
+              <p className="muted">下の「ページを追加」から紙を撮るか、写真を選んでください。</p>
+            </div>
           ) : (
-            <ol>
+            <ol className="pages">
               {pages.map((page, index) => (
-                <li key={page.id}>
-                  <img src={page.url} alt={`ページ ${index + 1}`} />
-                  <div>
-                    <strong>{index + 1}</strong>
-                    <div className="row">
-                      <button type="button" onClick={() => movePage(page.id, -1)} disabled={index === 0}>上へ</button>
-                      <button type="button" onClick={() => movePage(page.id, 1)} disabled={index === pages.length - 1}>下へ</button>
-                      <button type="button" className="danger" onClick={() => removePage(page.id)}>削除</button>
-                    </div>
+                <li key={page.id} className="page-card">
+                  <img src={page.url} alt="" />
+                  <div className="page-meta">
+                    <strong>ページ {index + 1}</strong>
+                    <span>
+                      {FILTER_LABEL[page.filter]} · {relativeTime(page.createdAt)}
+                    </span>
+                    {reordering && (
+                      <div className="page-actions">
+                        <button type="button" onClick={() => movePage(page.id, -1)} disabled={index === 0}>
+                          上へ
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => movePage(page.id, 1)}
+                          disabled={index === pages.length - 1}
+                        >
+                          下へ
+                        </button>
+                        <button type="button" className="danger" onClick={() => removePage(page.id)}>
+                          削除
+                        </button>
+                      </div>
+                    )}
                   </div>
+                  <span className="tag">{index + 1}</span>
                 </li>
               ))}
             </ol>
           )}
-          <div className="bar">
-            <button type="button" className="primary" onClick={() => setStage('camera')}>撮影</button>
-            <button type="button" onClick={() => fileRef.current?.click()}>画像を選ぶ</button>
-            <button type="button" onClick={() => void savePdf()} disabled={pages.length === 0 || busy}>PDF を保存</button>
+
+          <nav className="dock" aria-label="操作">
+            <button
+              type="button"
+              className={reordering ? 'on' : ''}
+              onClick={() => setReordering((value) => !value)}
+              disabled={pages.length === 0}
+            >
+              並べ替え
+            </button>
+            <button type="button" className="dock-main" onClick={() => setStage('camera')}>
+              ページを追加
+            </button>
+            <button type="button" onClick={() => void savePdf()} disabled={pages.length === 0 || busy}>
+              PDF
+            </button>
+          </nav>
+
+          <div className="sheet-extras">
+            <button type="button" className="text-link" onClick={() => fileRef.current?.click()}>
+              写真から選ぶ
+            </button>
           </div>
         </main>
       )}
 
       {stage === 'camera' && (
         <CameraCapture
-          onClose={() => setStage('library')}
+          onClose={cancelToLibrary}
+          onPickFile={() => fileRef.current?.click()}
           onCapture={(blob) => void openBlob(blob)}
         />
       )}
 
       {stage === 'corners' && source && corners && (
         <main className="workspace">
+          <header className="sheet-head">
+            <h1>枠</h1>
+            <span className="count">角を合わせる</span>
+          </header>
+          <Steps current="corners" />
           <CornerEditor source={source} corners={corners} onChange={setCorners} />
           {note && <p className="note">{note}</p>}
-          <div className="bar">
-            <button type="button" className="ghost" onClick={() => setStage('library')}>戻る</button>
+          <div className="sheet-actions">
+            <button type="button" className="ghost" onClick={cancelToLibrary}>
+              戻る
+            </button>
             <button
               type="button"
+              className="ghost"
               onClick={() => {
                 setCorners(insetCorners(source.width, source.height))
                 void detect(source)
               }}
             >
-              自動検出
+              自動で枠
             </button>
-            <button type="button" className="primary" onClick={showPreview} disabled={busy}>読み取り</button>
           </div>
+          <button type="button" className="cta" onClick={showPreview} disabled={busy}>
+            この枠で読み取る
+          </button>
         </main>
       )}
 
       {stage === 'preview' && enhanced && (
         <main className="workspace">
+          <header className="sheet-head">
+            <h1>仕上げ</h1>
+            <span className="count">見え方を選ぶ</span>
+          </header>
+          <Steps current="preview" />
           <PreviewCanvas canvas={enhanced} />
           <div className="filters" role="group" aria-label="画質">
             {FILTERS.map((item) => (
@@ -241,22 +323,26 @@ export default function App() {
               </button>
             ))}
           </div>
-          <div className="bar">
-            <button type="button" className="ghost" onClick={() => setStage('corners')}>四隅に戻る</button>
+          <div className="sheet-actions">
+            <button type="button" className="ghost" onClick={() => setStage('corners')}>
+              枠に戻る
+            </button>
             <button
               type="button"
+              className="ghost"
               onClick={() => {
                 void canvasToJpeg(enhanced).then((blob) => downloadBlob(blob, 'page.jpg'))
               }}
             >
-              画像を保存
+              画像だけ保存
             </button>
-            <button type="button" className="primary" onClick={() => void addPage()} disabled={busy}>ページに追加</button>
           </div>
+          <button type="button" className="cta" onClick={() => void addPage()} disabled={busy}>
+            ページに加える
+          </button>
         </main>
       )}
 
-      {busy && <p className="note busy">処理しています…</p>}
       <input
         ref={fileRef}
         type="file"
@@ -271,6 +357,23 @@ export default function App() {
   )
 }
 
+function Steps({ current }: { current: 'camera' | 'corners' | 'preview' }) {
+  const items = [
+    { id: 'camera', label: '撮る' },
+    { id: 'corners', label: '枠' },
+    { id: 'preview', label: '仕上げ' },
+  ] as const
+  return (
+    <div className="steps" aria-label="手順">
+      {items.map((item) => (
+        <span key={item.id} className={item.id === current ? 'now' : ''}>
+          {item.label}
+        </span>
+      ))}
+    </div>
+  )
+}
+
 function PreviewCanvas({ canvas }: { canvas: HTMLCanvasElement }) {
   const hostRef = useRef<HTMLDivElement>(null)
 
@@ -281,8 +384,16 @@ function PreviewCanvas({ canvas }: { canvas: HTMLCanvasElement }) {
   }, [canvas])
 
   return (
-    <div className="frame preview" style={{ aspectRatio: `${canvas.width} / ${canvas.height}` }}>
+    <div className="frame preview soft" style={{ aspectRatio: `${canvas.width} / ${canvas.height}` }}>
       <div ref={hostRef} className="canvas-host" />
     </div>
   )
+}
+
+function relativeTime(timestamp: number): string {
+  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000))
+  if (seconds < 45) return 'たった今'
+  if (seconds < 3600) return `${Math.round(seconds / 60)}分前`
+  if (seconds < 86400) return `${Math.round(seconds / 3600)}時間前`
+  return `${Math.round(seconds / 86400)}日前`
 }

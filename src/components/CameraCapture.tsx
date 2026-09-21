@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 type Props = {
   onCapture: (blob: Blob) => void
   onClose: () => void
+  onPickFile: () => void
 }
 
-export function CameraCapture({ onCapture, onClose }: Props) {
+export function CameraCapture({ onCapture, onClose, onPickFile }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,7 +34,7 @@ export function CameraCapture({ onCapture, onClose }: Props) {
           await video.play()
         }
       } catch {
-        if (!cancelled) setError('カメラを開けませんでした。画像ファイルから選んでください。')
+        if (!cancelled) setError('カメラを開けませんでした。写真から選んでください。')
       }
     }
 
@@ -60,15 +61,31 @@ export function CameraCapture({ onCapture, onClose }: Props) {
   }
 
   return (
-    <section className="camera">
-      <video ref={videoRef} playsInline muted autoPlay />
+    <section className="camera workspace">
+      <header className="sheet-head">
+        <h1>撮る</h1>
+        <span className="count">紙全体が入るように</span>
+      </header>
+      <div className="steps" aria-label="手順">
+        <span className="now">撮る</span>
+        <span>枠</span>
+        <span>仕上げ</span>
+      </div>
+      <div className="camera-stage">
+        <video ref={videoRef} playsInline muted autoPlay />
+      </div>
       {error && <p className="note error">{error}</p>}
-      <div className="bar">
-        <button type="button" className="ghost" onClick={onClose}>戻る</button>
-        <button type="button" className="primary shutter" onClick={capture} disabled={!!error}>
-          撮影
+      <div className="sheet-actions">
+        <button type="button" className="ghost" onClick={onClose}>
+          戻る
+        </button>
+        <button type="button" className="ghost" onClick={onPickFile}>
+          写真から選ぶ
         </button>
       </div>
+      <button type="button" className="cta" onClick={capture} disabled={!!error}>
+        シャッター
+      </button>
     </section>
   )
 }
